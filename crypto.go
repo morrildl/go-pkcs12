@@ -99,7 +99,6 @@ func pbDecrypt(info decryptable, password []byte) (decrypted []byte, err error) 
 	} else {
 		return nil, ErrDecryption
 	}
-	//os.Stdout.Write(decrypted)
 	return
 }
 
@@ -111,20 +110,22 @@ func pbEncrypt(name string, message, salt, password []byte, iterations int) ([]b
 	if err != nil {
 		return nil, err
 	}
-	// pkcs7 encrypted data pads the final block with the count of pad bytes
-	// if the final block is not a multiple of the cipher block size
+
+	// There must be at least one padding byte at the end, which may mean
+	// an entire block of padding is added.
+	// Padding bytes are all set to the count of padding bytes.
 	bsz := cbc.BlockSize()
 	mlen := len(message)
-	if (mlen % bsz) != 0 {
-		padcount := bsz - (mlen  % bsz)
-		newmsg := make([]byte, mlen + padcount)
-		copy(newmsg, message)
-		copy(newmsg[mlen:], bytes.Repeat([]byte{byte(padcount)}, padcount))
-		// zero newmsg when done?
-		message = newmsg
+	padcount := bsz - (mlen  % bsz)
+	padded := make([]byte, mlen + padcount)
+	copy(padded, message)
+	copy(padded[mlen:], bytes.Repeat([]byte{byte(padcount)}, padcount))
+
+	encrypted := make([]byte, len(padded))
+	cbc.CryptBlocks(encrypted, padded)
+	for i := range padded {
+		padded[i] = 0
 	}
-	encrypted := make([]byte, len(message))
-	cbc.CryptBlocks(encrypted, message)
 	return encrypted, nil
 }
 
