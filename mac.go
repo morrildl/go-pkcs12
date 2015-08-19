@@ -51,3 +51,12 @@ func verifyMac(macData *macData, message, password []byte) error {
 	}
 	return nil
 }
+
+func generateMacSha1(message, salt, password []byte, iterations int) ([]byte, error) {
+	name := sha1Algorithm
+	k := deriveMacKeyByAlg[name](salt, password, iterations)
+	password = nil
+	mac := hmac.New(hashByName[name], k)
+	mac.Write(message)
+	return mac.Sum(nil), nil
+}

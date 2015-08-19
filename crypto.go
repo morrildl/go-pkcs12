@@ -9,7 +9,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 
-	"github.com/Azure/go-pkcs12/rc2"
+	"pkcs12/rc2"
 )
 
 const (
@@ -63,6 +63,20 @@ func pbDecrypterFor(algorithm pkix.AlgorithmIdentifier, password []byte) (cipher
 	return cbc, nil
 }
 
+func pbEncrypterFor(name string, password, salt []byte, iterations int) (cipher.BlockMode, error) {
+	k := deriveKeyByAlg[name](salt, password, iterations)
+	iv := deriveIVByAlg[name](salt, password, iterations)
+	password = nil
+
+	code, err := blockcodeByAlg[name](k)
+	if err != nil {
+		return nil, err
+	}
+
+	cbc := cipher.NewCBCEncrypter(code, iv)
+	return cbc, nil
+}
+
 func pbDecrypt(info decryptable, password []byte) (decrypted []byte, err error) {
 	cbc, err := pbDecrypterFor(info.GetAlgorithm(), password)
 	password = nil
@@ -85,8 +99,33 @@ func pbDecrypt(info decryptable, password []byte) (decrypted []byte, err error) 
 	} else {
 		return nil, ErrDecryption
 	}
-
+	//os.Stdout.Write(decrypted)
 	return
+}
+
+func pbEncrypt(name string, message, salt, password []byte, iterations int) ([]byte, error) {
+	//name := pbewithSHAAnd40BitRC2CBC
+	//name := pbeWithSHAAnd3KeyTripleDESCBC
+	cbc, err := pbEncrypterFor(name, password, salt, iterations)
+	password = nil
+	if err != nil {
+		return nil, err
+	}
+	// pkcs7 encrypted data pads the final block with the count of pad bytes
+	// if the final block is not a multiple of the cipher block size
+	bsz := cbc.BlockSize()
+	mlen := len(message)
+	if (mlen % bsz) != 0 {
+		padcount := bsz - (mlen  % bsz)
+		newmsg := make([]byte, mlen + padcount)
+		copy(newmsg, message)
+		copy(newmsg[mlen:], bytes.Repeat([]byte{byte(padcount)}, padcount))
+		// zero newmsg when done?
+		message = newmsg
+	}
+	encrypted := make([]byte, len(message))
+	cbc.CryptBlocks(encrypted, message)
+	return encrypted, nil
 }
 
 type decryptable interface {
