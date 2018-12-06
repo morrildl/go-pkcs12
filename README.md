@@ -1,3 +1,14 @@
+# Archived Copy
+
+This is a clone of Azure's PKCS#12 implementation in Go, originally from
+`github.com/Azure/go-pkcs12`. That project has since been retired, in favor of a PKCS#12
+implementation from the Go project itself. However, the official version is read-only, whereas our
+projects need to generate `.p12` files. So we have this (unmaintained, but functional) copy.
+
+Original README content follows.
+
+
+
 # Package pkcs12
 
 [![GoDoc](https://godoc.org/github.com/Azure/go-pkcs12?status.svg)](https://godoc.org/github.com/Azure/go-pkcs12)
